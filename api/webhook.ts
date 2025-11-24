@@ -7,12 +7,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { text } = req.body as { text?: string };
+    console.log("Recebi do BotConversa:", req.body);
 
     if (!text) {
       return res.status(400).json({ error: "Campo 'text' não enviado" });
     }
 
-    // 1) Chamar a API da OpenAI
+    // ========= CHAMANDO OPENAI =========
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -25,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           {
             role: "system",
             content:
-              "Você é o atendente oficial da empresa, responde curto, simples e educado, em português do Brasil."
+              "Você é o atendente oficial da empresa. Responda em português, de forma simples e educada."
           },
           { role: "user", content: text }
         ]
@@ -33,14 +34,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const data = await openaiRes.json();
+    console.log("Resposta bruta OpenAI:", data);
+
     const reply =
       data.choices?.[0]?.message?.content?.trim() ||
       "Desculpe, tive um problema para responder agora.";
 
-    // 2) Devolver para o BotConversa em JSON
     return res.status(200).json({ reply });
   } catch (err) {
-    console.error("Erro no webhook:", err);
-    return res.status(500).json({ error: "Erro interno" });
+    console.error("ERRO GERAL:", err);
+    return res
+      .status(200)
+      .json({ reply: "Desculpe, tive um problema para responder agora." });
   }
 }
+
