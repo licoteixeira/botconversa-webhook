@@ -6,17 +6,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const body = req.body as any;
+    const { text } = req.body as { text?: string };
 
-    const msg = body?.message?.text || body?.text || "";
-    const phone = body?.message?.from || body?.phone || "";
-
-    console.log("Mensagem recebida:", msg, "Telefone:", phone);
-
-    if (!msg || !phone) {
-      return res.status(400).json({ error: "Payload incompleto" });
+    if (!text) {
+      return res.status(400).json({ error: "Campo 'text' não enviado" });
     }
 
+    // 1) Chamar a API da OpenAI
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -29,35 +25,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           {
             role: "system",
             content:
-              "Você é o atendente oficial da empresa. Responda de forma simples, direta e educada."
+              "Você é o atendente oficial da empresa, responde curto, simples e educado, em português do Brasil."
           },
-          { role: "user", content: msg }
+          { role: "user", content: text }
         ]
       })
     });
 
-    const openaiData = await openaiRes.json();
-    const resposta = openaiData.choices?.[0]?.message?.content?.trim() || "";
+    const data = await openaiRes.json();
+    const reply =
+      data.choices?.[0]?.message?.content?.trim() ||
+      "Desculpe, tive um problema para responder agora.";
 
-    const envio = await fetch(
-      "https://backend.botconversa.com.br/api/v1/messages/send",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": process.env.BOTCONVERSA_API_KEY as string
-        },
-        body: JSON.stringify({
-          phone,
-          message: resposta
-        })
-      }
-    );
-
-    const envioData = await envio.json();
-    console.log("Resposta BotConversa:", envioData);
-
-    return res.status(200).json({ ok: true });
+    // 2) Devolver para o BotConversa em JSON
+    return res.status(200).json({ reply });
   } catch (err) {
     console.error("Erro no webhook:", err);
     return res.status(500).json({ error: "Erro interno" });
