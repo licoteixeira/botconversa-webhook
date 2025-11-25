@@ -6,12 +6,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { text } = req.body as { text?: string };
-    console.log("Recebi do BotConversa:", req.body);
+   const body = req.body || {};
 
-    if (!text) {
-      return res.status(400).json({ error: "Campo 'text' não enviado" });
-    }
+console.log('Corpo recebido do BotConversa:', JSON.stringify(body, null, 2));
+
+const userText =
+  (body.text as string | undefined) ||
+  (body.mensagem as string | undefined) ||
+  (body.message as string | undefined) ||
+  (body.root && (body.root.text as string | undefined)) ||
+  '';
+
+if (!userText.trim()) {
+  return res.json({
+    reply:
+      'Desculpe, não consegui entender a sua mensagem agora. Pode escrever de novo, por favor?',
+  });
+}
 
     // ===== CHAMADA OPENAI COM LOG COMPLETO =====
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
